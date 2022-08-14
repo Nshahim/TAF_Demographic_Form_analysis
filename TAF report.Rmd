@@ -1,0 +1,348 @@
+---
+title: "TAF Demographic Report"
+author: "Shahim Nadery"
+date: "1/19/2021"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      warning = F,
+                      message = F
+                  )
+```
+
+```{r TAF}
+library(ggplot2)
+library(dplyr)
+library(openxlsx)
+library(plotrix)
+library(viridis)
+
+data <- read.xlsx("input/TAF Demographic Forms_Final.xlsx")
+data[data$Province == "Takhar ", "Province"] = "Takhar"
+
+```
+
+## Basic Participant Info
+
+The following graph shows the number of participants interviewed which shows an almost equal distribution of participants interviewed for each province.
+
+``` {r}
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#9dab86")
+data %>% 
+  group_by(Province) %>% 
+  summarize(Participants = sum(length(Name))) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=Province, y = Participants, fill = Province)) +
+  geom_col(show.legend = F) +
+  labs(x=NULL, y=NULL) +
+  ggtitle("Participants interviewed") +
+  theme_classic() +
+  ylim(c(0,30)) +
+  scale_fill_manual(values= cbp1) +
+  theme(plot.title = element_text(hjust = 0.5, color = "black"),
+        text = element_text(size = 9, family = "Calibri")) +
+    geom_text(aes(label=Participants), nudge_y=1, family = "Calibri", size = 3.2)
+  
+
+```
+
+From the interviewed participants, ..% are Male and ..% of them were females.
+
+```{r }
+
+forPie <- table(data$Gender) %>% 
+  data.frame() %>% 
+  mutate(perc = round(Freq/sum(Freq)*100))
+
+par(family = 'Calibri')
+pie(forPie$perc, labels = paste(forPie$perc, "%", sep = ""), col=c("#56B4E9", "#D55E00"), cex=0.75)
+legend("topright", c("Male", "Female"), cex = 0.75,
+       fill = c("#56B4E9", "#D55E00"))
+
+```
+
+The histogram below shows the distribution of male and female participants in each age group. Majority of the male and female participants interviewed are between the ages of .. to .. years old and there are only a few participants older than ..
+
+```{r}
+
+data %>% 
+  ggplot(aes(x=as.numeric(Age), fill=Gender)) +
+  geom_histogram() +
+  labs(x="Participant Age") +
+  theme_classic() +
+  theme(text = element_text(size = 9, family = "Calibri"))
+```
+```{r}
+#new request
+data %>%
+  mutate(AgeCat = case_when(
+    Age %in% c(17:30) ~ "17-30",
+    TRUE ~ NA_character_
+  )) %>% 
+  group_by(AgeCat) %>% 
+  summarize(count = length(AgeCat),
+            percent = paste0(round(100*count/nrow(data),2), '%'))
+
+data %>%
+  mutate(AgeCat = case_when(
+    Age %in% c(60:100) ~ "40",
+    TRUE ~ NA_character_
+  )) %>% 
+  group_by(AgeCat) %>% 
+  summarize(count = length(AgeCat),
+            percent = paste0(round(100*count/nrow(data),2), '%'))
+
+
+data %>% 
+  mutate(Age_catagory = case_when(
+    Age %in% c(17:27) ~ "17-27",
+    Age %in% c(28:38) ~ "28-38",
+    Age %in% c(39:49) ~ "39-49",
+    Age > 49 ~ "50 & Above",
+    TRUE ~ NA_character_
+  )) %>% 
+  group_by(Age_catagory, Gender) %>% 
+  summarize(count = length(Age_catagory),
+            percent = paste0(round(100*count/nrow(.),2), '%'))
+```
+
+On a province level classification in the figure below, we can see that majority of the young participants are from .. and .. but the number of interviewed people older than .. are almost flat in each of the below provinces.
+
+```{r}
+
+data %>% 
+  ggplot(aes(x=as.numeric(Age), fill = Province)) +
+  geom_density(alpha = 0.5, show.legend = F) +
+  facet_wrap(~Province, ncol = 2) +
+  labs(x="Participant Age") +
+  scale_fill_manual(values= cbp1) +
+  theme(panel.background = element_blank(),
+        text = element_text(size = 9, family = "Calibri"))
+
+```
+
+
+According to the Figures below, ..% of the participants were married, ..% were single and only ..% was Divorced. If we catagorize them age wise, almost all of the participants whom are .. are in between .. and .. years of age.
+
+```{r }
+#new request
+cbp1 <- c("#E69F00", "#D55E00", "#56B4E9")
+
+table(data$Marital.Status) %>% 
+  data.frame() %>% 
+  mutate(perc = round(Freq/sum(Freq)*100))
+
+data[data$Gender %in% "Female ",] %>% 
+  group_by(Marital.Status) %>% 
+  summarize(count = length(Marital.Status),
+            percent = round(100*count/nrow(.),1)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=percent, y = Marital.Status)) +
+  geom_col(show.legend =F, fill="#5B9BD5") +
+  labs(x=NULL, y=NULL) +
+  ggtitle("Female Participant's Marital Statues") +
+  theme_classic() +
+  xlim(c(0,100)) +
+  theme(plot.title = element_text(hjust = 0.5, color = "black"),
+        text = element_text(size = 9, family = "Calibri")) +
+    geom_text(aes(label=paste0(percent,'%')), nudge_x=5, family = "Calibri", size = 3.2)
+  
+data[data$Gender %in% "Male ",] %>% 
+  group_by(Marital.Status) %>% 
+  summarize(count = length(Marital.Status),
+            percent = round(100*count/nrow(.),1)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=percent, y = Marital.Status)) +
+  geom_col(show.legend =F, fill="#5B9BD5") +
+  labs(x=NULL, y=NULL) +
+  ggtitle("Male Participant's Marital Status") +
+  theme_classic() +
+  xlim(c(0,100)) +
+  theme(plot.title = element_text(hjust = 0.5, color = "black"),
+        text = element_text(size = 9, family = "Calibri")) +
+    geom_text(aes(label=paste0(percent,'%')), nudge_x=5, family = "Calibri", size = 3.2)
+
+```
+
+```{r }
+
+cbp1 <- c("#E69F00", "#D55E00", "#56B4E9")
+
+forPie <- table(data$Marital.Status) %>% 
+  data.frame() %>% 
+  mutate(perc = round(Freq/sum(Freq)*100))
+
+par(family = 'Calibri')
+pie(forPie$perc, labels = paste(forPie$perc, "%", sep = ""), col=cbp1, main = "Marital Status", cex=0.75)
+legend("topright", c("Divorced","Married","Single"), cex = 0.75,
+       fill = cbp1)
+
+```
+
+```{r }
+cbp1 <- c("#999999", "#56B4E9", "#0072B2")
+
+data %>% 
+  mutate(Age_catagory = case_when(
+    Age %in% c(17:25) ~ "17-25",
+    Age %in% c(26:35) ~ "26-35",
+    Age %in% c(36:46) ~ "36-46",
+    Age > 46 ~ "Above 46",
+    TRUE ~ NA_character_
+  )) %>% 
+  group_by(Age_catagory, Marital.Status) %>% 
+  summarize(Frequency = sum(length(Marital.Status))) %>% 
+  ungroup() %>% 
+  ggplot(aes(x= factor(Marital.Status, levels = c("Single", "Married", "Divorced")), y = Frequency, fill=Marital.Status)) +
+  geom_col(show.legend = F) +
+  labs(x=NULL) +
+  facet_wrap(~Age_catagory) +
+  geom_text(aes(label=Frequency), nudge_y=4, size=3, family="calibri") +
+  ylim(c(0,60)) +
+  scale_fill_manual(values= cbp1) +
+  theme(panel.background = element_blank(),
+        text = element_text(size = 9, family = "Calibri"))
+
+```
+
+From the .. people interviewed, majority of them holds a .. degree but an almost equal amount of them were ..
+
+```{r}
+  
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#9dab86")
+
+table(data$Education.level) %>% 
+  data.frame() %>% 
+  ggplot(aes(x = reorder(Var1, -Freq), y = Freq, fill = Var1)) +
+  geom_col() +
+  coord_polar(start=0) +
+  geom_text(aes(label=Freq), nudge_y = 4, size=3.2) +
+  labs(x=NULL, y = NULL, fill=NULL) +
+  scale_fill_manual(values= cbp1)+
+  theme(panel.background = element_blank(),
+        axis.text = element_blank(),
+        text = element_text(size = 9, family = "Calibri")
+        )
+
+
+```
+```{r}
+## new request
+cbp1 <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#9dab86")
+
+data[data$Gender %in% "Male ",] %>% 
+  group_by(Education.level) %>% 
+  summarize(count = length(Education.level),
+            percent = paste0(round(100*count/nrow(.),1), '%')) %>% 
+  ggplot(aes(x = reorder(Education.level, -count), y = count, fill = Education.level)) +
+  geom_col() +
+  coord_polar(start=0) +
+  geom_text(aes(label=count), nudge_y = 4, size=3.2) +
+  labs(x=NULL, y = NULL, fill=NULL) +
+  ggtitle("Male Participants") +
+  scale_fill_manual(values= cbp1)+
+  theme(plot.title = element_text(hjust = 0.6, color = "black"),
+    panel.background = element_blank(),
+        axis.text = element_blank(),
+        text = element_text(size = 9, family = "Calibri")
+        )
+
+data[data$Gender %in% "Female ",] %>% 
+  group_by(Education.level) %>% 
+  summarize(count = length(Education.level),
+            percent = paste0(round(100*count/nrow(.),1), '%')) %>% 
+  ggplot(aes(x = reorder(Education.level, -count), y = count, fill = Education.level)) +
+  geom_col() +
+  coord_polar(start=0) +
+  geom_text(aes(label=count), nudge_y = 4, size=3.2) +
+  ggtitle("Female Participants") +
+  labs(x=NULL, y = NULL, fill=NULL) +
+  scale_fill_manual(values= cbp1)+
+  theme(plot.title = element_text(hjust = 0.6, color = "black"),
+        panel.background = element_blank(),
+        axis.text = element_blank(),
+        text = element_text(size = 9, family = "Calibri")
+        )
+
+```
+
+Although, the representations differ greatly from one province to another. In .., for example, majority of the participants are .. while in .., majority of the participants had some form of ..
+
+
+```{r }
+data %>% 
+  group_by(Province, Education.level) %>%
+  summarize(Participants = sum(length(Education.level))) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=Education.level, y=Participants, fill=Education.level)) +
+  geom_col() +
+  facet_wrap(~Province, ncol = 2) +
+  labs(x=NULL, y = NULL, fill=NULL) +
+  theme(axis.text.x = element_blank(),
+        legend.position = "bottom",
+        panel.background = element_blank(),
+        text = element_text(size = 9, family = "Calibri")) +
+  geom_text(aes(label=Participants), nudge_y=4, size=2.8, family="calibri") +
+  ylim(c(0,20)) +
+  scale_fill_manual(values= cbp1)
+
+```
+```{r }
+#new request
+data[data$Province %in% "Badghis",] %>% 
+  group_by(Province, Education.level) %>%
+  summarize(Participants = sum(length(Education.level)),
+            percent = paste0(round(100*Participants/nrow(.),1), '%'))
+
+data[data$Province %in% "Herat",] %>% 
+  group_by(Province, Education.level) %>%
+  summarize(Participants = sum(length(Education.level)),
+            percent = paste0(round(100*Participants/nrow(.),1), '%'))
+```
+
+The graph below depicts the number of people who has a job based on their education level. Majority of the participanst with a .. degree either had a .. or .. ...
+
+```{r }
+data %>% 
+  filter(`Do.you.have.job?` != "No") %>% 
+  group_by(Education.level) %>% 
+  summarize(Has_a_Job = sum(length(Education.level))) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=Education.level, y = Has_a_Job, fill=Education.level)) +
+  geom_col(show.legend = F) +
+  labs(x=NULL, y = "Number of people with Jobs") +
+  theme_classic() +
+  geom_text(aes(label=Has_a_Job), nudge_y=1, size =3.2, family = "Calibri") +
+  scale_fill_manual(values= cbp1) +
+  theme(text = element_text(size = 9, family = "Calibri"))
+```
+
+A better and detailed representation of the above data would be to visualize it based on each catagory of the job. The figure below shows that most of the people who did not receive any sort of education are ..
+
+```{r }
+data %>% 
+  group_by(Education.level, `Do.you.have.job?`) %>% 
+  summarize(Number_of_Jobs = sum(length(`Do.you.have.job?`))) %>% 
+  ungroup() %>%
+  ggplot(aes(x=factor(`Do.you.have.job?`, levels = c("Part-Time", "Full-Time", "No")), y = Number_of_Jobs, fill=`Do.you.have.job?`)) +
+  geom_col() +
+  facet_wrap(~Education.level) +
+  labs(x=NULL, y = NULL, fill="Do you have a job?") +
+  theme(axis.text.x = element_blank(),
+        panel.background = element_blank(),
+        text = element_text(size = 9, family = "Calibri"),
+        legend.position = "bottom") +
+  geom_text(aes(label=Number_of_Jobs), nudge_y=6, size=2.8, family="Calibri") +
+  ylim(c(0,60)) +
+  scale_fill_manual(values= c("#999999", "#56B4E9", "#0072B2"))
+
+```
+
+
+
+
+
+
